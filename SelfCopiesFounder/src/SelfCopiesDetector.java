@@ -11,14 +11,14 @@ public class SelfCopiesDetector {
 
     //all milliseconds
     private static final int TIMEOUT = 5000;
-
-    private static final int PERIOD = TIMEOUT;
-
-    private static final int DELAY = 0;
-
-    private static final int ACTIVE_TIME = TIMEOUT * 2;
+    private static final int SEND_PERIOD = TIMEOUT;
+    private static final int SEND_DELAY = 0;
+    private static final int ACTIVE_TIME = SEND_PERIOD * 2;
+    private static final int REMOVE_DELAY = ACTIVE_TIME;
+    private static final int REMOVE_PERIOD = ACTIVE_TIME;
 
     private static final Timer sendTimer = new Timer(true);
+    private static final Timer removeTimer = new Timer(true);
 
     public static void detectCopies(InetAddress multicastAddress) {
         try(MulticastSocket multicastSocket = new MulticastSocket(new InetSocketAddress(PORT))) {
@@ -28,10 +28,9 @@ public class SelfCopiesDetector {
             DatagramPacket recvPacket = new DatagramPacket(recvBuffer, 0);
             ConcurrentHashMap<InetAddress, Date> activeCopies = new ConcurrentHashMap<>();
 
-            setTimer(multicastSocket, multicastAddress);
+            setSendTimer(multicastSocket, multicastAddress);
+            setRemoveTimer(activeCopies);
             while (true) {
-                removeInactiveCopies(activeCopies);
-
                 try {
                     multicastSocket.receive(recvPacket);
                 } catch (SocketTimeoutException e) {
@@ -56,7 +55,7 @@ public class SelfCopiesDetector {
         System.out.print("\n");
     }
 
-    private static void setTimer(MulticastSocket multicastSocket, InetAddress multicastAddress) {
+    private static void setSendTimer(MulticastSocket multicastSocket, InetAddress multicastAddress) {
         sendTimer.schedule(new TimerTask() {
             @Override
             public void run() {
@@ -66,7 +65,16 @@ public class SelfCopiesDetector {
                     e.printStackTrace();
                 }
             }
-        }, DELAY, PERIOD);
+        }, SEND_DELAY, SEND_PERIOD);
+    }
+
+    private static void setRemoveTimer(ConcurrentHashMap<InetAddress, Date> activeCopies) {
+        removeTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                removeInactiveCopies(activeCopies);
+            }
+        }, REMOVE_DELAY, REMOVE_PERIOD);
     }
 
     private static void removeInactiveCopies(ConcurrentHashMap<InetAddress, Date> activeCopies) {

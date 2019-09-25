@@ -16,7 +16,7 @@ public class SelfCopiesDetector {
 
     private static final int DELAY = 0;
 
-    private static final int ACTIVE_TIME = 10000;
+    private static final int ACTIVE_TIME = TIMEOUT * 2;
 
     private static final Timer sendTimer = new Timer(true);
 
@@ -30,7 +30,7 @@ public class SelfCopiesDetector {
 
             setTimer(multicastSocket, multicastAddress);
             while (true) {
-                checkForInactiveCopies(activeCopies);
+                removeInactiveCopies(activeCopies);
 
                 try {
                     multicastSocket.receive(recvPacket);
@@ -69,7 +69,7 @@ public class SelfCopiesDetector {
         }, DELAY, PERIOD);
     }
 
-    private static void checkForInactiveCopies(ConcurrentHashMap<InetAddress, Date> activeCopies) {
+    private static void removeInactiveCopies(ConcurrentHashMap<InetAddress, Date> activeCopies) {
         activeCopies.forEach(((inetAddress, date) -> {
             if (new Date().getTime() - activeCopies.get(inetAddress).getTime() > ACTIVE_TIME) {
                 activeCopies.remove(inetAddress);

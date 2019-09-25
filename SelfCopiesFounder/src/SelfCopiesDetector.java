@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.net.*;
+import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,7 +9,14 @@ public class SelfCopiesDetector {
 
     private static final int PORT = 5555;
 
-    private static final int TIMEOUT = 5000; // milliseconds
+    //all milliseconds
+    private static final int TIMEOUT = 5000;
+
+    private static final int PERIOD = TIMEOUT;
+
+    private static final int DELAY = 0;
+
+    private static final int ACTIVE_TIME = 10000;
 
     private static final Timer sendTimer = new Timer(true);
 
@@ -18,32 +26,23 @@ public class SelfCopiesDetector {
             multicastSocket.setSoTimeout(TIMEOUT);
             byte[] recvBuffer = new byte[0];
             DatagramPacket recvPacket = new DatagramPacket(recvBuffer, 0);
-            ConcurrentHashMap<InetAddress, Boolean> activeCopies = new ConcurrentHashMap<>();
+            ConcurrentHashMap<InetAddress, Date> activeCopies = new ConcurrentHashMap<>();
 
             setTimer(multicastSocket, multicastAddress);
             while (true) {
-                activeCopies.forEach((inetAddress, aBoolean) -> activeCopies.put(inetAddress, false));
+                checkForInactiveCopies(activeCopies);
+
                 try {
-                    while (true) {
-                        multicastSocket.receive(recvPacket);
-                        if (!activeCopies.containsKey(recvPacket.getAddress())) {
-                            activeCopies.put(recvPacket.getAddress(), true);
-                            System.out.println(recvPacket.getAddress().getHostAddress() + " joined.");
-                            printActiveCopies(activeCopies);
-                        } else {
-                            activeCopies.put(recvPacket.getAddress(), true);
-                        }
-                    }
+                    multicastSocket.receive(recvPacket);
                 } catch (SocketTimeoutException e) {
-
+                    continue;
                 }
-
-                for (InetAddress address : activeCopies.keySet()) {
-                    if (!activeCopies.get(address)) {
-                        activeCopies.remove(address);
-                        System.out.println(address.getHostAddress() + " left.");
-                        printActiveCopies(activeCopies);
-                    }
+                if (!activeCopies.containsKey(recvPacket.getAddress())) {
+                    activeCopies.put(recvPacket.getAddress(), new Date());
+                    System.out.println(recvPacket.getAddress().getHostAddress() + " joined.");
+                    printActiveCopies(activeCopies);
+                } else {
+                    activeCopies.put(recvPacket.getAddress(), new Date());
                 }
             }
         } catch (Exception e) {
@@ -51,9 +50,9 @@ public class SelfCopiesDetector {
         }
     }
 
-    private static void printActiveCopies(ConcurrentHashMap<InetAddress, Boolean> copiesList) {
+    private static void printActiveCopies(ConcurrentHashMap<InetAddress, Date> copiesList) {
         System.out.println("List of active copies:");
-        copiesList.forEach(((inetAddress, aBoolean) -> System.out.println(inetAddress.getHostAddress())));
+        copiesList.forEach(((inetAddress, date) -> System.out.println(inetAddress.getHostAddress())));
         System.out.print("\n");
     }
 
@@ -67,7 +66,17 @@ public class SelfCopiesDetector {
                     e.printStackTrace();
                 }
             }
-        }, 0, TIMEOUT);
+        }, DELAY, PERIOD);
+    }
+
+    private static void checkForInactiveCopies(ConcurrentHashMap<InetAddress, Date> activeCopies) {
+        activeCopies.forEach(((inetAddress, date) -> {
+            if (new Date().getTime() - activeCopies.get(inetAddress).getTime() > ACTIVE_TIME) {
+                activeCopies.remove(inetAddress);
+                System.out.println(inetAddress.getHostAddress() + " left");
+                printActiveCopies(activeCopies);
+            }
+        }));
     }
 
 }

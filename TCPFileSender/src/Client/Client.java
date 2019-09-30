@@ -14,6 +14,7 @@ public class Client {
             }
         } catch (UnknownHostException e) {
             e.printStackTrace();
+            System.out.println("File sending isn't successful");
         }
     }
 

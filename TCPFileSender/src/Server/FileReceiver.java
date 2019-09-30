@@ -6,6 +6,7 @@ import Utility.Pair;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 
 class FileReceiver implements Runnable {
 
@@ -30,7 +31,11 @@ class FileReceiver implements Runnable {
 
             OutputStream fileOutputStream = new BufferedOutputStream(new FileOutputStream(
                     new File("Uploads" + File.pathSeparator + header.getFirst()))), socketOutputStream = socket.getOutputStream();
-            receiveFile(socketInputStream, fileOutputStream);
+            if (receiveFile(socketInputStream, fileOutputStream) == header.getSecond()) {
+                socket.getOutputStream().write(0);
+            } else {
+                socket.getOutputStream().write(1);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             try {
@@ -49,11 +54,17 @@ class FileReceiver implements Runnable {
         return new Pair<>(fileName, fileLength);
     }
 
-    private void receiveFile(InputStream socketInputStream, OutputStream fileOutputStream) throws IOException {
-        byte[] buf = GuaranteedReader.guaranteedRead(socketInputStream, BUF_SIZE);
-        while (buf.length != 0) {
-            fileOutputStream.write(buf);
-            buf = GuaranteedReader.guaranteedRead(socketInputStream, BUF_SIZE);
+    private long receiveFile(InputStream socketInputStream, OutputStream fileOutputStream) throws IOException {
+        byte[] buf = new byte[BUF_SIZE];
+        long generalCount = 0;
+        try {
+            while (true) {
+                int count = socketInputStream.read(buf);
+                generalCount += count;
+                fileOutputStream.write(buf, 0, count);
+            }
+        } catch (SocketTimeoutException e) {
+            return generalCount;
         }
     }
 }

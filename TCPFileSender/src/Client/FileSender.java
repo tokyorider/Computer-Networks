@@ -21,8 +21,15 @@ class FileSender {
 
             BufferedInputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
             sendFile(fileInputStream, socketOutputStream);
+            int flag = socket.getInputStream().read();
+            if (flag == 0) {
+                System.out.println("File sending is successful");
+            } else {
+                System.out.println("File sending isn't successful");
+            }
         } catch(IOException e) {
             e.printStackTrace();
+            System.out.println("File sending isn't successful");
         }
     }
 

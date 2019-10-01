@@ -1,12 +1,10 @@
 package Client;
 
-import Utility.Converter;
-import Utility.GuaranteedReader;
-
 import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 class FileSender {
@@ -34,9 +32,15 @@ class FileSender {
     }
 
     private static void sendHeader(File file, OutputStream socketOutputStream) throws IOException {
-        socketOutputStream.write(Converter.convertToByteArr((short)file.getName().length(), Short.SIZE / 8));
+        ByteBuffer fileNameLength = ByteBuffer.allocate(Short.BYTES);
+        fileNameLength.putShort((short)file.getName().getBytes(StandardCharsets.UTF_8).length);
+        socketOutputStream.write(fileNameLength.array());
+
         socketOutputStream.write(file.getName().getBytes(StandardCharsets.UTF_8));
-        socketOutputStream.write(Converter.convertToByteArr(file.length(), Long.SIZE / 8));
+
+        ByteBuffer fileLength = ByteBuffer.allocate(Long.BYTES);
+        fileLength.putLong(file.length());
+        socketOutputStream.write(fileLength.array());
     }
 
     private static void sendFile(InputStream fileInputStream, OutputStream socketOutputStream) throws IOException {

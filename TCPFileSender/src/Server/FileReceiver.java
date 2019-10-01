@@ -1,12 +1,13 @@
 package Server;
 
-import Utility.Converter;
 import Utility.GuaranteedReader;
 import Utility.Pair;
 
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -106,10 +107,12 @@ class FileReceiver implements Runnable {
     }
 
     private Pair<String, Long> receiveHeader(InputStream socketInputStream) throws IOException {
-        int fileNameLength = (int)Converter.convertToNumber(GuaranteedReader.guaranteedRead(socketInputStream, Short.SIZE / 8), Short.SIZE / 8);
-        String fileName = new String(GuaranteedReader.guaranteedRead(socketInputStream, fileNameLength));
-        long fileLength = Converter.convertToNumber(GuaranteedReader.guaranteedRead(socketInputStream, Long.SIZE / 8), Long.SIZE / 8);
-
+        short fileNameLength = ByteBuffer.allocate(Short.BYTES).put(
+                GuaranteedReader.guaranteedRead(socketInputStream, Short.BYTES)).getShort();
+        String fileName = new String(GuaranteedReader.guaranteedRead(socketInputStream, fileNameLength),
+                StandardCharsets.UTF_8);
+        long fileLength = ByteBuffer.allocate(Long.BYTES).put(
+                GuaranteedReader.guaranteedRead(socketInputStream, Long.BYTES)).getLong();
         return new Pair<>(fileName, fileLength);
     }
 

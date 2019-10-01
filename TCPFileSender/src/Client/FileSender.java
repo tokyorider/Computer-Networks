@@ -40,10 +40,11 @@ class FileSender {
     }
 
     private static void sendFile(InputStream fileInputStream, OutputStream socketOutputStream) throws IOException {
-        byte[] buf = GuaranteedReader.guaranteedRead(fileInputStream, BUF_SIZE);
-        while (buf.length != 0) {
-            socketOutputStream.write(buf);
-            buf = GuaranteedReader.guaranteedRead(fileInputStream, BUF_SIZE);
+        byte[] buf = new byte[BUF_SIZE];
+        int count = fileInputStream.read(buf);
+        while (count != -1) {
+            socketOutputStream.write(buf, 0, count);
+            count = fileInputStream.read(buf);
         }
     }
 

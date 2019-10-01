@@ -2,7 +2,6 @@ package Utility;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 
 public class GuaranteedReader {
 
@@ -12,7 +11,7 @@ public class GuaranteedReader {
         while (generalCount < sizeInBytes) {
             count = inputStream.read(buf, generalCount, sizeInBytes - generalCount);
             if (count == -1) {
-                    return Arrays.copyOfRange(buf, 0, generalCount);
+                    throw new IOException("Cant read required amount of bytes");
             }
             generalCount += count;
         }

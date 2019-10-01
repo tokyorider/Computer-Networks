@@ -80,6 +80,11 @@ class FileReceiver implements Runnable {
             socketInputStream = socket.getInputStream();
             header = receiveHeader(socketInputStream);
         } catch(Exception e) {
+            try {
+                socket.close();
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
             e.printStackTrace();
             return;
         }

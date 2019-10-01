@@ -1,6 +1,7 @@
 package Client;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
@@ -11,8 +12,10 @@ public class Client {
         try {
             if (file.exists()) {
                 FileSender.send(file, InetAddress.getByName(args[1]), Integer.parseInt(args[2]));
+            } else {
+                throw new FileNotFoundException("Error: file doesn't exist");
             }
-        } catch (UnknownHostException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             System.out.println("File sending isn't successful");
         }

@@ -108,11 +108,11 @@ class FileReceiver implements Runnable {
 
     private Pair<String, Long> receiveHeader(InputStream socketInputStream) throws IOException {
         short fileNameLength = ByteBuffer.allocate(Short.BYTES).put(
-                GuaranteedReader.guaranteedRead(socketInputStream, Short.BYTES)).getShort();
+                GuaranteedReader.guaranteedRead(socketInputStream, Short.BYTES)).clear().getShort();
         String fileName = new String(GuaranteedReader.guaranteedRead(socketInputStream, fileNameLength),
                 StandardCharsets.UTF_8);
         long fileLength = ByteBuffer.allocate(Long.BYTES).put(
-                GuaranteedReader.guaranteedRead(socketInputStream, Long.BYTES)).getLong();
+                GuaranteedReader.guaranteedRead(socketInputStream, Long.BYTES)).clear().getLong();
         return new Pair<>(fileName, fileLength);
     }
 

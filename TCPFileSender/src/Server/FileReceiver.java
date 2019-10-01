@@ -5,27 +5,23 @@ import Utility.Pair;
 
 import java.io.*;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.Semaphore;
 
 class FileReceiver implements Runnable {
 
     private Socket socket;
 
-    private static final int TIMEOUT = 1000, BUF_SIZE = 1 << 20; //megabyte
+    private static final int BUF_SIZE = 1 << 20; //megabyte
 
     private Timer timer = new Timer(true), updateTimer = new Timer(true);
 
-    private long generalCount = 0, temporaryCount = 0;
+    private Long generalCount = (long)0, temporaryCount = (long)0;
 
     private int instantSpeed; //kilobytes/second
-
-    private Semaphore mutex = new Semaphore(1);
 
     class AverageSpeed extends TimerTask {
 
@@ -38,8 +34,10 @@ class FileReceiver implements Runnable {
         @Override
         public void run() {
             System.out.println(socket.getInetAddress().getHostAddress() + ":\nInstant uploading speed = " + instantSpeed + " kBytes/s");
-            System.out.println("Average uploading speed = " +
-                    (1000 * generalCount / (new Date().getTime() - start.getTime())) / 1024 + " kBytes/s");
+            synchronized (generalCount) {
+                System.out.println("Average uploading speed = " +
+                        (1000 * generalCount / (new Date().getTime() - start.getTime())) / 1024 + " kBytes/s");
+            }
         }
 
     }
@@ -54,13 +52,9 @@ class FileReceiver implements Runnable {
 
         @Override
         public void run() {
-            try {
-                mutex.acquire();
+            synchronized (temporaryCount) {
                 instantSpeed = (int) ((temporaryCount / (timeInterval * 1024)));
-                temporaryCount = 0;
-                mutex.release();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                temporaryCount = (long) 0;
             }
         }
 
@@ -76,7 +70,6 @@ class FileReceiver implements Runnable {
         InputStream socketInputStream;
         Pair<String, Long> header;
         try {
-            socket.setSoTimeout(TIMEOUT);
             socketInputStream = socket.getInputStream();
             header = receiveHeader(socketInputStream);
         } catch(Exception e) {
@@ -93,7 +86,7 @@ class FileReceiver implements Runnable {
                 new File("Uploads" + File.pathSeparator + header.getFirst()))))
         {
             receiveFile(socketInputStream, fileOutputStream);
-            if (generalCount == header.getSecond()) {
+            if (generalCount.equals(header.getSecond())) {
                 socket.getOutputStream().write(0);
             } else {
                 socket.getOutputStream().write(1);
@@ -122,26 +115,20 @@ class FileReceiver implements Runnable {
     }
 
     private void receiveFile(InputStream socketInputStream, OutputStream fileOutputStream) throws IOException {
+        int count;
         byte[] buf = new byte[BUF_SIZE];
         Date start = new Date();
         timer.scheduleAtFixedRate(new AverageSpeed(start), 3000, 3000);
         updateTimer.scheduleAtFixedRate(new InstantSpeed(1), 1000, 1000);
 
-        try {
-            while (true) {
-                int count = socketInputStream.read(buf);
-                try {
-                    mutex.acquire();
-                    temporaryCount += count;
-                    mutex.release();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                generalCount += count;
-                fileOutputStream.write(buf, 0, count);
+        while ((count = socketInputStream.read(buf)) != -1) {
+            synchronized (temporaryCount) {
+                temporaryCount += count;
             }
-        } catch (SocketTimeoutException e) {
-            timer.schedule(new AverageSpeed(start), 0);
+            synchronized (generalCount) {
+                generalCount += count;
+            }
+            fileOutputStream.write(buf, 0, count);
         }
     }
 

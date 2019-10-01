@@ -3,7 +3,6 @@ package Client;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 public class Client {
 

@@ -6,6 +6,7 @@ import Utility.Pair;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -131,7 +132,7 @@ class FileReceiver implements Runnable {
                 generalCount += count;
                 fileOutputStream.write(buf, 0, count);
             }
-        } catch (Exception e) {
+        } catch (SocketTimeoutException e) {
             timer.schedule(new AverageSpeed(start), 0);
         }
     }

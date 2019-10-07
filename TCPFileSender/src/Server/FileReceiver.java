@@ -17,7 +17,7 @@ class FileReceiver implements Runnable {
 
     private static final int BUF_SIZE = 1 << 20; //megabyte
 
-    private Timer timer = new Timer(true), updateTimer = new Timer(true);
+    private Timer timer = new Timer(true);
 
     private Long generalCount = (long)0, temporaryCount = (long)0;
 
@@ -94,7 +94,6 @@ class FileReceiver implements Runnable {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            updateTimer.cancel();
             timer.cancel();
             try {
                 socket.close();
@@ -107,11 +106,22 @@ class FileReceiver implements Runnable {
     private Pair<String, Long> receiveHeader(InputStream socketInputStream) throws IOException {
         short fileNameLength = ByteBuffer.allocate(Short.BYTES).put(
                 GuaranteedReader.guaranteedRead(socketInputStream, Short.BYTES)).clear().getShort();
-        String fileName = new String(GuaranteedReader.guaranteedRead(socketInputStream, fileNameLength),
-                StandardCharsets.UTF_8);
+        String fileName = getUniqueFileName(new File(new String(GuaranteedReader.guaranteedRead(socketInputStream,
+                fileNameLength), StandardCharsets.UTF_8)).getName());
         long fileLength = ByteBuffer.allocate(Long.BYTES).put(
                 GuaranteedReader.guaranteedRead(socketInputStream, Long.BYTES)).clear().getLong();
         return new Pair<>(fileName, fileLength);
+    }
+
+    private String getUniqueFileName(String firstFileName) {
+        String fileName = firstFileName;
+        int number = 1;
+        while (new File("Uploads" + File.pathSeparator + fileName).exists()) {
+            fileName = firstFileName + "(" + number + ")";
+            number++;
+        }
+
+        return fileName;
     }
 
     private void receiveFile(InputStream socketInputStream, OutputStream fileOutputStream) throws IOException {
@@ -119,7 +129,7 @@ class FileReceiver implements Runnable {
         byte[] buf = new byte[BUF_SIZE];
         Date start = new Date();
         timer.scheduleAtFixedRate(new AverageSpeed(start), 3000, 3000);
-        updateTimer.scheduleAtFixedRate(new InstantSpeed(1), 1000, 1000);
+        timer.scheduleAtFixedRate(new InstantSpeed(1), 1000, 1000);
 
         while ((count = socketInputStream.read(buf)) != -1) {
             synchronized (temporaryCount) {
@@ -130,6 +140,11 @@ class FileReceiver implements Runnable {
             }
             fileOutputStream.write(buf, 0, count);
         }
+
+        timer.cancel();
+        timer = new Timer(true);
+        timer.schedule(new InstantSpeed((double)(new Date().getTime() - start.getTime()) / 1000), 0);
+        timer.schedule(new AverageSpeed(start), 0);
     }
 
 }

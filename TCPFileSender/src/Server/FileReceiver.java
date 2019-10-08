@@ -113,7 +113,7 @@ class FileReceiver implements Runnable {
         return new Pair<>(fileName, fileLength);
     }
 
-    private String getUniqueFileName(String firstFileName) {
+    private static String getUniqueFileName(String firstFileName) {
         String fileName = firstFileName;
         int number = 1;
         while (new File("Uploads" + File.pathSeparator + fileName).exists()) {
